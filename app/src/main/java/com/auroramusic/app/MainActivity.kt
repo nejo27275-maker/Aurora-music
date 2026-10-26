@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -68,6 +69,13 @@ class MainActivity : ComponentActivity() {
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
                         playing = isPlaying
                     }
+
+                    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                        currentTrackName = mediaItem?.mediaMetadata?.title?.toString()
+                            ?.ifBlank { "Escolha uma música do catálogo" }
+                            ?: "Escolha uma música do catálogo"
+                        currentArtist = mediaItem?.mediaMetadata?.artist?.toString().orEmpty()
+                    }
                 })
             } catch (_: Exception) {
                 // A tela continua disponível; a mensagem será atualizada ao iniciar a reprodução.
@@ -81,9 +89,11 @@ class MainActivity : ComponentActivity() {
             var tracks by remember { mutableStateOf<List<JamendoTrack>>(emptyList()) }
             var isLoading by remember { mutableStateOf(false) }
             var errorMessage by remember { mutableStateOf("") }
+            var sectionTitle by remember { mutableStateOf("Em destaque") }
             val scope = rememberCoroutineScope()
 
             fun searchCatalog(query: String) {
+                sectionTitle = if (query.isBlank()) "Em destaque" else "Resultados da busca"
                 if (clientId.isBlank()) {
                     showSettings = true
                     errorMessage = "Ative o catálogo com seu Client ID gratuito do Jamendo."
@@ -103,8 +113,34 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            fun loadAuraMix() {
+                if (clientId.isBlank()) {
+                    showSettings = true
+                    errorMessage = "Cadastre o Client ID gratuito para montar sua playlist com faixas reproduzíveis."
+                    return
+                }
+                scope.launch {
+                    isLoading = true
+                    errorMessage = ""
+                    sectionTitle = "AURA MIX • Batida que gruda"
+                    try {
+                        tracks = JamendoCatalog.auraMix(clientId)
+                        if (tracks.isEmpty()) {
+                            errorMessage = "Não encontramos faixas para a playlist. Confira o Client ID e a conexão."
+                        } else {
+                            errorMessage = "Playlist carregada: ${tracks.size} faixas. Toque em uma música para iniciar a fila."
+                        }
+                    } catch (error: Exception) {
+                        errorMessage = error.message ?: "Não foi possível montar a playlist. Verifique a internet."
+                    } finally {
+                        isLoading = false
+                    }
+                }
+            }
+
             LaunchedEffect(clientId) {
                 if (clientId.isNotBlank()) {
+                    sectionTitle = "Em destaque"
                     isLoading = true
                     errorMessage = ""
                     try {
@@ -202,6 +238,25 @@ class MainActivity : ComponentActivity() {
                         Spacer(Modifier.height(10.dp))
                     }
 
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable { loadAuraMix() },
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF282342))
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 13.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text("AURA MIX", color = AuroraMint, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                                Text("Batida forte + ritmo que gruda", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text("Criar playlist com músicas disponíveis no Jamendo", color = Color(0xFFB3B2C8), fontSize = 11.sp)
+                            }
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Carregar playlist AURA MIX", tint = AuroraPurple, modifier = Modifier.size(30.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+
                     if (showSettings) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -276,7 +331,7 @@ class MainActivity : ComponentActivity() {
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            if (searchText.isBlank()) "Em destaque" else "Resultados",
+                            sectionTitle,
                             color = Color.White,
                             fontSize = 19.sp,
                             fontWeight = FontWeight.Bold,
@@ -316,7 +371,7 @@ class MainActivity : ComponentActivity() {
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { playTrack(track) },
+                                    .clickable { playTrack(track, tracks) },
                                 shape = RoundedCornerShape(18.dp),
                                 colors = CardDefaults.cardColors(containerColor = AuroraSurface)
                             ) {
@@ -366,7 +421,7 @@ class MainActivity : ComponentActivity() {
                                             fontSize = 11.sp
                                         )
                                     }
-                                    IconButton(onClick = { playTrack(track) }) {
+                                    IconButton(onClick = { playTrack(track, tracks) }) {
                                         Icon(Icons.Default.PlayArrow, contentDescription = "Reproduzir ${track.name}", tint = AuroraPurple)
                                     }
                                 }
@@ -407,6 +462,18 @@ class MainActivity : ComponentActivity() {
                                     tint = AuroraPurple
                                 )
                             }
+                            IconButton(
+                                onClick = {
+                                    player?.let { activePlayer ->
+                                        if (activePlayer.hasNextMediaItem()) {
+                                            activePlayer.seekToNextMediaItem()
+                                            activePlayer.play()
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.SkipNext, contentDescription = "Próxima música", tint = AuroraMint)
+                            }
                         }
                     }
                     Spacer(Modifier.height(4.dp))
@@ -421,23 +488,27 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun playTrack(track: JamendoTrack) {
+    private fun playTrack(track: JamendoTrack, queue: List<JamendoTrack>) {
         val activePlayer = player
         if (activePlayer == null) {
             currentTrackName = "O reprodutor ainda está iniciando. Tente novamente."
             return
         }
-        val mediaItem = MediaItem.Builder()
-            .setUri(track.audio)
-            .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setTitle(track.name)
-                    .setArtist(track.artist)
-                    .setAlbumTitle(track.album)
-                    .build()
-            )
-            .build()
-        activePlayer.setMediaItem(mediaItem)
+        val safeQueue = queue.ifEmpty { listOf(track) }
+        val selectedIndex = safeQueue.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
+        val mediaItems = safeQueue.map { item ->
+            MediaItem.Builder()
+                .setUri(item.audio)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(item.name)
+                        .setArtist(item.artist)
+                        .setAlbumTitle(item.album)
+                        .build()
+                )
+                .build()
+        }
+        activePlayer.setMediaItems(mediaItems, selectedIndex, 0L)
         activePlayer.prepare()
         activePlayer.play()
         currentTrackName = track.name
