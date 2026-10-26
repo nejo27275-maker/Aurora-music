@@ -1,22 +1,28 @@
-# Aurora Music 🎧
+# Aurora Music
 
-**Beta 0.1 — projeto Android em desenvolvimento**
+Aplicativo Android nativo em Kotlin + Jetpack Compose, com pesquisa de música online, capas, streaming e controles de reprodução.
 
-Aurora Music é um reprodutor Android com interface moderna, reprodução em segundo plano e controles de mídia do sistema. Esta primeira versão toca arquivos de áudio escolhidos pelo próprio usuário; ainda não inclui catálogo comercial online nem recomendações por IA.
+## Catálogo atual
 
-## Recursos iniciais
-- Interface em Jetpack Compose
-- Reprodução com AndroidX Media3 / ExoPlayer
-- Serviço de mídia para reprodução em segundo plano e controles da tela bloqueada
-- Seleção de arquivos de áudio no aparelho
-- Saída de áudio Bluetooth usando o roteamento normal do Android
-- Workflow para compilar APK de debug no GitHub Actions
+O app integra a API pública do **Jamendo**, que oferece um catálogo de música independente. Essa integração não dá acesso automático a todo o repertório comercial do Spotify ou YouTube Music.
 
-## Compilar
-Abra o projeto no Android Studio com JDK 17+ e deixe o Gradle sincronizar. Também é possível executar o workflow **Android Debug APK** na aba Actions. O APK de debug não é uma versão de produção.
+### Ativar o catálogo
 
-## Catálogo e direitos autorais
-A versão inicial não baixa nem inclui músicas protegidas. Um catálogo online futuro deverá usar fontes autorizadas e respeitar licenças, direitos autorais e termos dos provedores.
+1. Instale e abra o Aurora Music.
+2. Toque em **Obter Client ID gratuito** para abrir o portal de desenvolvedores do Jamendo e registrar uma aplicação.
+3. Cole o Client ID fornecido pelo Jamendo no app e toque em **Salvar e carregar catálogo**.
+4. Pesquise por nome de música, artista ou termo musical; toque numa faixa para reproduzi-la por streaming.
 
-## Estado
-Protótipo inicial. A compilação automatizada precisa ser executada e aprovada antes de considerar o APK validado.
+O Client ID é guardado nas preferências locais do aplicativo. Não coloque tokens privados ou senhas nesse campo.
+
+Confira a licença de cada faixa antes de reutilizar, distribuir ou incluir a música em conteúdo publicado. As permissões variam por faixa. O uso do catálogo e da API segue os [termos do Jamendo](https://devportal.jamendo.com/api_terms_of_use).
+
+## Compilar o APK
+
+O repositório contém um workflow do GitHub Actions. Após um push na branch `main`, ele compila o APK de depuração e publica `app-debug.apk` como artefato da execução.
+
+- Pacote Android: `com.auroramusic.app`
+- Versão: `0.2.0`
+- Requisitos de build: JDK 17 e Gradle 8.11.1.
+
+O APK de depuração serve para testes; para distribuição pública, configure uma assinatura de release.
