@@ -6,7 +6,11 @@ Aplicativo Android nativo em Kotlin + Jetpack Compose, com pesquisa de música o
 
 O app integra a API pública do **Jamendo**, que oferece um catálogo de música independente. Essa integração não dá acesso automático a todo o repertório comercial do Spotify ou YouTube Music.
 
-### Ativar o catálogo
+### Playlist AURA MIX
+
+A tela inicial inclui a playlist **AURA MIX — Batida forte + ritmo que gruda**. Ao tocar nela, o app consulta faixas disponíveis no Jamendo usando buscas de música eletrônica, bass, funk e hip-hop. As faixas retornadas formam uma fila de reprodução; tocar em uma música inicia a fila a partir dela e o botão de próxima música avança para a seguinte. A playlist é atualizada a partir do catálogo online e exige um Client ID válido e conexão com a internet.
+
+## Ativar o catálogo
 
 1. Instale e abra o Aurora Music.
 2. Toque em **Obter Client ID gratuito** para abrir o portal de desenvolvedores do Jamendo e registrar uma aplicação.
@@ -22,7 +26,7 @@ Confira a licença de cada faixa antes de reutilizar, distribuir ou incluir a m�
 O repositório contém um workflow do GitHub Actions. Após um push na branch `main`, ele compila o APK de depuração e publica `app-debug.apk` como artefato da execução.
 
 - Pacote Android: `com.auroramusic.app`
-- Versão: `0.2.0`
+- Versão: `0.3.0`
 - Requisitos de build: JDK 17 e Gradle 8.11.1.
 
 O APK de depuração serve para testes; para distribuição pública, configure uma assinatura de release.
