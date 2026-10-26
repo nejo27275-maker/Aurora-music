@@ -21,6 +21,28 @@ data class JamendoTrack(
 )
 
 object JamendoCatalog {
+    /**
+     * Builds a fresh, playable mix from the current Jamendo catalog.
+     * Search terms are deliberately broad because this is an independent catalog,
+     * not the commercial Spotify/YouTube Music repertoire.
+     */
+    suspend fun auraMix(clientId: String, limit: Int = 30): List<JamendoTrack> {
+        require(clientId.isNotBlank()) { "Informe o Client ID do Jamendo para montar a playlist." }
+        val mix = linkedMapOf<String, JamendoTrack>()
+        val searches = listOf("electronic dance", "bass groove", "funk", "hip hop")
+        for (term in searches) {
+            val remaining = limit.coerceAtLeast(1) - mix.size
+            if (remaining <= 0) break
+            val found = runCatching { search(clientId, term, remaining.coerceAtMost(12)) }
+                .getOrElse { emptyList() }
+            for (track in found) {
+                if (!mix.containsKey(track.id)) mix[track.id] = track
+            }
+        }
+        if (mix.isEmpty()) return search(clientId, "", limit)
+        return mix.values.take(limit.coerceIn(1, 50))
+    }
+
     suspend fun search(clientId: String, query: String = "", limit: Int = 30): List<JamendoTrack> =
         withContext(Dispatchers.IO) {
             require(clientId.isNotBlank()) { "Informe o Client ID do Jamendo para ativar o catálogo." }
